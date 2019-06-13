@@ -10,21 +10,24 @@ A Clojure library designed to provide very thin and simple interface layer betwe
 (defn app-routes
   [{db :db]
   (routes
+    ;; Your standard routes
     (ANY "/users/:id" [] (users id db))
     (ANY "/groups" [] (users db))
+    ;; Swagger routes
     (swagger-routes {:swagger-object 
-      (make-swagger-object
-        {:info  {:version     "0.0.1"
-                 :title       "Data Engine"
-                 :description "Emergynt Data Engine API"}
-         :tags  [{:name        "tag1"
-                  :description "First tag"}
-                 {:name        "tag 2"
-                  :description "Second tag"}]
-         :paths {"/users/{id}" #'users
-                 "/groups #'groups}})
-        :ui             "/swagger"
-        :spec           "/swagger.json"})
+                      (make-swagger-object
+                        {:info  {:version     "0.0.1"
+                                 :title       "Project Title"
+                                 :description "Project Description"}
+                         :tags  [{:name        "tag1"
+                                  :description "First tag"}
+                                 {:name        "tag 2"
+                                  :description "Second tag"}]
+                         :paths {"/users/{id}" #'users
+                                 "/groups #'groups}})
+                     :ui   "/swagger"
+                     :spec "/swagger.json"})
+    ;; Catch-all routes, etc
     (route/resources "/")
     (route/not-found "404")))
 
@@ -54,7 +57,7 @@ A Clojure library designed to provide very thin and simple interface layer betwe
 
 ## License
 
-Copyright © 2019 FIXME
+Copyright © 2019 Slawomir Gonet
 
 This program and the accompanying materials are made available under the
 terms of the Eclipse Public License 2.0 which is available at
