@@ -3,7 +3,26 @@
             [spec-tools.swagger.core :as swagger]
             [compojure.api.swagger :as compojure-swagger]
             [compojure.core :refer [routes GET]]
-            [clojure.data.json :as json]))
+            [clojure.data.json :as json])
+  (:use [com.rpl.specter]))
+
+(defn- extract-handlers-data
+  [metadata]
+  (reduce (fn [acc [method desc handler]] (update acc handler merge {method desc}))
+          {}
+          (select [ALL (collect-one FIRST)                  ;; collect every HTTP method
+                   ALL ::swagger/responses ALL              ;; navigate through every response code
+                   (nthpath 1) (collect-one :description) (must :generate-handler)] ;; navigate only if first element in [code {:description .. :generate-handler ...} contains :generate-handler
+                  (:swagger metadata))))
+
+(defn- generate-handlers
+  "Generate handlers from :swagger metadata for each   "
+  [metadata]
+  (reduce-kv (fn [acc handler-name methods]
+               (concat (list handler-name `(fn [ctx#] (get ~, methods (get-in ctx# [:request :request-method]))))
+                       acc))
+             '()
+             (extract-handlers-data metadata)))
 
 (defmacro defresource [name metadata params & body]
   "Wrapper on top of Liberator resource allowing to add metadata to defined function."
@@ -11,7 +30,8 @@
      ~metadata
      ~params
      (liberator/resource
-       ~@body)))
+       ~@(concat body
+                 (generate-handlers metadata)))))
 
 (defn swagger-routes
   "Define Compojure routes for Swagger documentation.

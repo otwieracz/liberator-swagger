@@ -54,6 +54,35 @@ A Clojure library designed to provide very thin and simple interface layer betwe
   :put! (fn [ctx] (PUT-CODE)))
 ```
 
+### Handlers based on description
+
+In order to simplify error handling and reply with meaningful error message after, for example, `:malformed?` check, additional key has been introduced. Slightly modifying previous example by adding `:generate-handler` key to `::swagger/responses`:
+
+```clojure
+(defresource users [id db]
+  {:swagger {:post {:tags                ["tag1"]
+                    :summary             "Create new user"
+                    ::swagger/parameters {:path (spec/keys :req-un [::id])
+                                          :body ::user}
+                    ::swagger/responses {200 {:schema ::user}
+                                         404 {:generate-handler :handle-not-found
+                                              :description "User not found!"}}
+  :allowed-methods [:post]
+  :available-media-types ["application/json"]
+  :post! (fn [ctx] (POST-CODE)))
+```
+
+will cause additional handler to be generated, equivalent to appending at the end of the resource definition:
+```clojure
+  (...)
+  :allowed-methods [:post]
+  :available-media-types ["application/json"]
+  :post! (fn [ctx] (POST-CODE)))
+  ;; generated-handler:
+  :handle-not-found (fn [ctx] (get {:post "User not found"} (get-in ctx [:request :method]))))
+  ```
+
+causing textual message to be returned from endpoint, depending on return code and request method.
 
 ## License
 
