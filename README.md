@@ -24,7 +24,7 @@ A Clojure library designed to provide very thin and simple interface layer betwe
                                  {:name        "tag 2"
                                   :description "Second tag"}]
                          :paths {"/users/{id}" #'users
-                                 "/groups #'groups}})
+                                 "/group/{id}" [#'delete-group #'update-group]}})
                      :ui   "/swagger"
                      :spec "/swagger.json"})
     ;; Catch-all routes, etc

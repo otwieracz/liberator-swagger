@@ -49,7 +49,9 @@
   [paths]
   (apply merge
          (map (fn [[url function-symbol]]
-                {url (:swagger (meta function-symbol))})
+                {url (if (coll? function-symbol)
+                       (reduce merge (map #(get % :swagger) function-symbol))
+                       (:swagger (meta function-symbol)))})
               paths)))
 
 (defn make-swagger-object
