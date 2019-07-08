@@ -6,14 +6,33 @@
             [clojure.data.json :as json])
   (:use [com.rpl.specter]))
 
+;; https://dnaeon.github.io/clojure-map-ks-paths/
+(defn- keys-in
+  "Returns a sequence of all key paths in a given map using DFS walk."
+  [m]
+  (letfn [(children [node]
+            (let [v (get-in m node)]
+              (if (map? v)
+                (map (fn [x] (conj node x)) (keys v))
+                [])))
+          (branch? [node] (-> (children node) seq boolean))]
+    (->> (keys m)
+         (map vector)
+         (mapcat #(tree-seq branch? children %)))))
+
 (defn- extract-handlers-data
   [metadata]
   (reduce (fn [acc [method desc handler]] (update acc handler merge {method desc}))
           {}
-          (select [ALL (collect-one FIRST)                  ;; collect every HTTP method
-                   ALL ::swagger/responses ALL              ;; navigate through every response code
-                   (nthpath 1) (collect-one :description) (must :generate-handler)] ;; navigate only if first element in [code {:description .. :generate-handler ...} contains :generate-handler
-                  (:swagger metadata))))
+          (concat
+            (select [ALL (collect-one FIRST)                ;; collect every HTTP method
+                     ALL ::swagger/responses ALL            ;; navigate through every swagger response code
+                     (nthpath 1) (collect-one :description) (must :generate-handler)] ;; navigate only if first element in [code {:description .. :generate-handler ...} contains :generate-handler
+                    (:swagger metadata))
+            (select [ALL (collect-one FIRST)                ;; collect every HTTP method
+                     ALL :responses ALL                     ;; navigate through every response code
+                     (nthpath 1) (collect-one :description) (must :generate-handler)] ;; navigate only if first element in [code {:description .. :generate-handler ...} contains :generate-handler
+                    (:swagger metadata)))))
 
 (defn- generate-handlers
   "Generate handlers from :swagger metadata for each   "
@@ -45,14 +64,24 @@
     (compojure-swagger/swagger-routes {:ui   (or ui "/swagger")
                                        :spec (or spec "/swagger.json")})))
 
+(defn- cleanup-swagger-structure
+  "Cleanup swagger structure from additional fields like `generate-handler`"
+  [map]
+  (reduce (fn [acc key]
+            (update-in acc (butlast key) dissoc (last key)))
+          map
+          (filter #(= (last %) :generate-handler) (keys-in map))))
+
 (defn- make-paths
   [paths]
-  (apply merge
-         (map (fn [[url function-symbol]]
-                {url (if (coll? function-symbol)
-                       (reduce merge (map #(get % :swagger) function-symbol))
-                       (:swagger (meta function-symbol)))})
-              paths)))
+  (->>
+    (map (fn [[url function-symbol]]
+           {url (if (coll? function-symbol)
+                  (reduce merge (map #(get (meta %) :swagger) function-symbol))
+                  (:swagger (meta function-symbol)))})
+         paths)
+    (apply merge)
+    (cleanup-swagger-structure)))
 
 (defn make-swagger-object
   "Make ring-swagger map object"

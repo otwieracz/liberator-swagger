@@ -1,4 +1,4 @@
-(defproject liberator-swagger "0.1.2"
+(defproject liberator-swagger "0.1.4"
   :description "Thin layer interfacing between Liberator and Swagger, for adding API documentation into exisitng Liberator projects with Spec."
   :url "https://github.com/otwieracz/liberator-swagger"
   :license {:name "EPL-2.0 OR GPL-2.0-or-later WITH Classpath-exception-2.0"
